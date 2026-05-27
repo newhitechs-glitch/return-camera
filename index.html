@@ -2,11 +2,11 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Camera — ระบบจัดการสินค้าส่งคืน</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #5a0010;
@@ -16,38 +16,44 @@
   --text-w: #ffffff;
   --text-ws: rgba(255,255,255,0.75);
   --text-wm: rgba(255,255,255,0.55);
-  --font-display: 'Plus Jakarta Sans', 'IBM Plex Sans Thai Looped', sans-serif;
-  --font-body: 'IBM Plex Sans Thai Looped', 'Plus Jakarta Sans', sans-serif;
+  --font: 'Kanit', sans-serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
   height: 100%;
   background: #000;
   color: var(--text-w);
-  font-family: var(--font-body);
+  font-family: var(--font);
   overflow: hidden;
 }
 
 .app {
-  position: relative;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
+/* Header — fixed top */
 .cam-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: rgba(0,0,0,0.85);
+  padding: 12px 14px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: linear-gradient(to bottom, rgba(0,0,0,0.92), rgba(0,0,0,0.50));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  z-index: 10;
 }
 .cam-header .title {
-  font-family: var(--font-display);
+  font-family: var(--font);
   font-size: 14px;
   font-weight: 700;
   display: flex;
@@ -57,10 +63,9 @@ html, body {
 .cam-header .title small {
   display: block;
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-ws);
   margin-top: 2px;
-  letter-spacing: 0.04em;
 }
 .cam-header .type-badge {
   display: inline-block;
@@ -69,34 +74,47 @@ html, body {
   border-radius: 99px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
   margin-left: 6px;
 }
 .cam-header .close-btn {
-  width: 36px; height: 36px;
+  width: 38px; height: 38px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.20);
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.25);
   color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .cam-header .close-btn:active { transform: scale(0.92); }
 
+/* Body — full screen */
 .cam-body {
   flex: 1;
   position: relative;
   background: #000;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 #video, #preview {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 #preview { display: none; }
+#previewVideo {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000;
+  display: none;
+}
 
 .cam-overlay {
   position: absolute;
@@ -106,7 +124,10 @@ html, body {
 }
 .cam-grid {
   position: absolute;
-  inset: 0;
+  top: 80px;
+  bottom: 140px;
+  left: 0;
+  right: 0;
   background-image:
     linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
@@ -114,20 +135,20 @@ html, body {
 }
 
 .recording-indicator {
-  position: absolute;
-  top: 16px;
+  position: fixed;
+  top: calc(78px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: none;
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: rgba(220,38,38,0.90);
+  background: rgba(220,38,38,0.95);
   border-radius: 99px;
   font-size: 12px;
   font-weight: 700;
-  font-family: var(--font-display);
-  z-index: 20;
+  font-family: var(--font);
+  z-index: 55;
   box-shadow: 0 4px 16px rgba(220,38,38,0.50);
 }
 .recording-indicator.show { display: flex; }
@@ -143,13 +164,14 @@ html, body {
 }
 
 .cam-loading {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
   background: rgba(0,0,0,0.92);
-  z-index: 20;
+  z-index: 100;
   text-align: center;
+  padding: 20px;
 }
 .spinner {
   width: 48px; height: 48px;
@@ -161,112 +183,111 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ============ FOOTER — FIXED BOTTOM (สำคัญ!) ============ */
 .cam-footer {
-  padding: 16px;
-  background: rgba(0,0,0,0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 60 !important;
+  padding: 18px 20px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 30%, rgba(0,0,0,0.50) 80%, transparent);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+  gap: 16px;
 }
 
-/* Capture button */
+/* Capture button — ใหญ่ ตรงกลาง */
 .capture-btn {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: #fff;
-  border: 5px solid rgba(255,255,255,0.40);
+  border: 6px solid rgba(255,255,255,0.40);
   cursor: pointer;
   transition: all .12s;
   display: grid;
   place-items: center;
   position: relative;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.50);
+  flex-shrink: 0;
 }
 .capture-btn::before {
   content: '';
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   background: #fff;
-  border: 2px solid #000;
+  border: 3px solid #000;
 }
-.capture-btn:active { transform: scale(0.92); }
+.capture-btn:active { transform: scale(0.90); }
 .capture-btn.recording {
   background: var(--red);
 }
 .capture-btn.recording::before {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: #fff;
   border: none;
 }
 
 .flip-btn, .gallery-btn {
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.65);
+  border: 1.5px solid rgba(255,255,255,0.30);
   color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: all .15s;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.flip-btn:hover, .gallery-btn:hover {
-  background: rgba(255,255,255,0.22);
-  transform: scale(1.05);
-}
-.flip-btn:active, .gallery-btn:active { transform: scale(0.94); }
+.flip-btn:active, .gallery-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.20); }
 
-/* Preview mode */
+/* Preview action bar (เมื่อถ่ายแล้ว) */
 .preview-actions {
   display: none;
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  pointer-events: none;
-  z-index: 15;
-}
-.preview-actions.show {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 100px;
-  pointer-events: auto;
-  background: linear-gradient(to top, rgba(0,0,0,0.50), transparent);
-}
-.preview-action-bar {
-  display: flex;
-  gap: 14px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  padding: 18px 20px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 30%, transparent);
   align-items: center;
+  justify-content: center;
 }
+.preview-actions.show { display: flex; gap: 14px; }
+
 .preview-btn {
-  padding: 12px 22px;
+  padding: 14px 26px;
   border-radius: 99px;
-  font-family: var(--font-display);
+  font-family: var(--font);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid;
+  border: 1.5px solid;
   transition: all .15s;
 }
-.preview-btn:active { transform: scale(0.96); }
+.preview-btn:active { transform: scale(0.95); }
 .btn-retake {
-  background: rgba(255,255,255,0.10);
-  border-color: rgba(255,255,255,0.30);
+  background: rgba(0,0,0,0.75);
+  border-color: rgba(255,255,255,0.35);
   color: #fff;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-.btn-retake:hover { background: rgba(255,255,255,0.20); }
 .btn-confirm {
   background: linear-gradient(135deg, #4ade80, #16a34a);
   border-color: #4ade80;
@@ -274,30 +295,24 @@ html, body {
   font-weight: 800;
   box-shadow: 0 6px 20px rgba(34,197,94,0.45);
 }
-.btn-confirm:hover { filter: brightness(1.05); transform: translateY(-1px); }
 
 .error-msg {
-  padding: 16px;
+  padding: 20px;
   text-align: center;
   color: #fca5a5;
 }
-
-.timer-display {
-  position: absolute;
-  top: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.65);
+.error-msg .fallback-btn {
+  margin-top: 14px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.30);
   color: #fff;
-  padding: 4px 12px;
-  border-radius: 99px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  padding: 11px 22px;
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: var(--font);
   font-weight: 600;
-  display: none;
-  z-index: 20;
+  font-size: 13px;
 }
-.timer-display.show { display: block; }
 </style>
 </head>
 <body>
@@ -311,14 +326,14 @@ html, body {
       <span class="type-badge" id="typeBadge">PHOTO</span>
     </div>
     <button class="close-btn" onclick="closeWindow()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </header>
   
   <div class="cam-body">
     <video id="video" autoplay playsinline muted></video>
     <img id="preview" alt="preview">
-    <video id="previewVideo" style="display:none;width:100%;height:100%;object-fit:cover;" controls></video>
+    <video id="previewVideo" controls></video>
     
     <div class="cam-overlay">
       <div class="cam-grid"></div>
@@ -328,42 +343,38 @@ html, body {
       <span class="red-dot"></span>
       <span id="recTimer">REC 00:00</span>
     </div>
-    
-    <div class="timer-display" id="timerDisplay">00:00</div>
-    
-    <div class="cam-loading" id="loadingEl">
-      <div>
-        <div class="spinner"></div>
-        <div style="font-weight:600;">กำลังเปิดกล้อง...</div>
-        <small style="opacity:.7;display:block;margin-top:6px;font-size:12px;">กรุณาอนุญาตการใช้กล้อง</small>
-      </div>
-    </div>
-    
-    <div class="preview-actions" id="previewActions">
-      <div class="preview-action-bar">
-        <button class="preview-btn btn-retake" onclick="retake()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M1 20l4.93-4.93A8.5 8.5 0 0 1 20.49 15"/></svg>
-          ถ่ายใหม่
-        </button>
-        <button class="preview-btn btn-confirm" onclick="sendToOpener()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          ใช้รูปนี้
-        </button>
-      </div>
+  </div>
+  
+  <div class="cam-loading" id="loadingEl">
+    <div>
+      <div class="spinner"></div>
+      <div style="font-weight:600;font-size:15px;">กำลังเปิดกล้อง...</div>
+      <small style="opacity:.7;display:block;margin-top:6px;font-size:12px;">กรุณาอนุญาตการใช้กล้อง</small>
     </div>
   </div>
   
   <footer class="cam-footer" id="footer">
     <button class="flip-btn" id="flipBtn" title="สลับกล้อง">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><polyline points="16 16 19 19 22 16"/><polyline points="2 8 5 5 8 8"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><polyline points="16 16 19 19 22 16"/><polyline points="2 8 5 5 8 8"/></svg>
     </button>
     
     <button class="capture-btn" id="captureBtn" title="ถ่าย"></button>
     
     <button class="gallery-btn" id="galleryBtn" title="เลือกจากคลังภาพ">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
     </button>
   </footer>
+  
+  <div class="preview-actions" id="previewActions">
+    <button class="preview-btn btn-retake" onclick="retake()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M1 20l4.93-4.93A8.5 8.5 0 0 1 20.49 15"/></svg>
+      ถ่ายใหม่
+    </button>
+    <button class="preview-btn btn-confirm" onclick="sendToOpener()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      ใช้รูปนี้
+    </button>
+  </div>
 </div>
 
 <script>
@@ -387,8 +398,6 @@ let stream = null;
 let currentFacing = 'environment';
 let capturedData = null;
 let capturedMime = null;
-
-// Video recording
 let mediaRecorder = null;
 let recordChunks = [];
 let recordStartTime = 0;
@@ -403,14 +412,13 @@ const previewActions = document.getElementById('previewActions');
 const captureBtn = document.getElementById('captureBtn');
 const recIndicator = document.getElementById('recIndicator');
 const recTimer = document.getElementById('recTimer');
+const footer = document.getElementById('footer');
 
 async function startCamera() {
   try {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-    }
+    if (stream) stream.getTracks().forEach(t => t.stop());
     const constraints = {
-      audio: isVideo,  // เปิดเสียงเมื่อถ่ายวิดีโอ
+      audio: isVideo,
       video: {
         facingMode: { ideal: currentFacing },
         width: { ideal: 1920 },
@@ -422,16 +430,19 @@ async function startCamera() {
     await video.play();
     loadingEl.style.display = 'none';
   } catch (err) {
-    loadingEl.innerHTML = '<div class="error-msg"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 14px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div style="font-weight:700;font-size:15px;margin-bottom:6px;color:#fca5a5;">ไม่สามารถเปิดกล้องได้</div><small style="opacity:.75;color:#fca5a5;font-size:12px;">' + (err.message || err) + '</small><br><br><button onclick="openFilePicker()" style="margin-top:10px;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.30);color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600;">เลือกจากคลังภาพแทน</button></div>';
+    loadingEl.innerHTML = '<div class="error-msg">'
+      + '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 14px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+      + '<div style="font-weight:700;font-size:15px;margin-bottom:6px;">เปิดกล้องไม่ได้</div>'
+      + '<small style="opacity:.75;font-size:12px;">' + (err.message || err) + '</small><br>'
+      + '<button class="fallback-btn" onclick="openFilePicker()">เลือกจากคลังภาพแทน</button>'
+      + '</div>';
   }
 }
 
-// ===== Take photo =====
 function takePhoto() {
   const canvas = document.createElement('canvas');
   const w = video.videoWidth;
   const h = video.videoHeight;
-  // Resize to max 1280
   const maxSize = 1280;
   let cw = w, ch = h;
   if (w > maxSize || h > maxSize) {
@@ -446,7 +457,6 @@ function takePhoto() {
   showPreview('image');
 }
 
-// ===== Start video recording =====
 function startRecording() {
   recordChunks = [];
   try {
@@ -475,7 +485,6 @@ function startRecording() {
   captureBtn.classList.add('recording');
   recIndicator.classList.add('show');
   
-  // Timer
   recordTimerId = setInterval(() => {
     const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
     const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
@@ -494,7 +503,6 @@ function stopRecording() {
   if (recordTimerId) { clearInterval(recordTimerId); recordTimerId = null; }
 }
 
-// ===== Show preview =====
 function showPreview(kind) {
   if (kind === 'image') {
     video.style.display = 'none';
@@ -507,7 +515,7 @@ function showPreview(kind) {
     previewVideo.style.display = 'block';
     previewVideo.src = capturedData;
   }
-  document.getElementById('footer').style.display = 'none';
+  footer.style.display = 'none';
   previewActions.classList.add('show');
 }
 
@@ -518,7 +526,7 @@ function retake() {
   preview.style.display = 'none';
   previewVideo.style.display = 'none';
   previewVideo.src = '';
-  document.getElementById('footer').style.display = 'flex';
+  footer.style.display = 'flex';
   previewActions.classList.remove('show');
 }
 
@@ -538,15 +546,14 @@ function sendToOpener() {
 }
 
 function closeWindow() {
-  if (stream) { stream.getTracks().forEach(t => t.stop()); }
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); }
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   window.close();
   setTimeout(() => {
-    document.body.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#fff;font-family:sans-serif;height:100vh;display:grid;place-items:center;background:#000;"><div><div style="font-size:48px;margin-bottom:16px;">✓</div><div style="font-size:18px;font-weight:700;">เสร็จแล้ว</div><div style="opacity:.6;margin-top:10px;font-size:13px;">คุณสามารถปิดแท็บนี้ได้</div></div></div>';
+    document.body.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#fff;font-family:Kanit,sans-serif;height:100vh;display:grid;place-items:center;background:#000;"><div><div style="font-size:48px;margin-bottom:16px;">✓</div><div style="font-size:18px;font-weight:700;">เสร็จแล้ว</div><div style="opacity:.6;margin-top:10px;font-size:13px;">คุณสามารถปิดแท็บนี้ได้</div></div></div>';
   }, 300);
 }
 
-// ===== Capture button =====
 captureBtn.addEventListener('click', () => {
   if (isVideo) {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') startRecording();
@@ -556,13 +563,11 @@ captureBtn.addEventListener('click', () => {
   }
 });
 
-// ===== Flip camera =====
 document.getElementById('flipBtn').addEventListener('click', () => {
   currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
   startCamera();
 });
 
-// ===== Gallery (fallback) =====
 function openFilePicker() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -582,7 +587,6 @@ function openFilePicker() {
 }
 document.getElementById('galleryBtn').addEventListener('click', openFilePicker);
 
-// Start
 window.addEventListener('DOMContentLoaded', startCamera);
 </script>
 </body>
