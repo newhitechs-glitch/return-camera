@@ -6,7 +6,7 @@
 <title>Camera — ระบบจัดการสินค้าส่งคืน</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #5a0010;
@@ -16,7 +16,7 @@
   --text-w: #ffffff;
   --text-ws: rgba(255,255,255,0.75);
   --text-wm: rgba(255,255,255,0.55);
-  --font: 'Mitr', sans-serif;
+  --font: 'Prompt', sans-serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
@@ -439,7 +439,77 @@ async function startCamera() {
   }
 }
 
+// ============ SHUTTER SOUND (Web Audio API) ============
+let audioCtx = null;
+function playShutterSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const now = audioCtx.currentTime;
+    
+    // เสียง "click" — ใช้ noise burst + high-pass filter
+    const bufferSize = audioCtx.sampleRate * 0.08;  // 80ms
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const channelData = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1200;
+    
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.30, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start(now);
+    noise.stop(now + 0.08);
+    
+    // เสียง "klak" สั้น ๆ ตอนกลไกชัตเตอร์ปิด (low-tone)
+    const osc = audioCtx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(180, now + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.10);
+    
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(0.18, now + 0.04);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    
+    osc.connect(oscGain);
+    oscGain.connect(audioCtx.destination);
+    osc.start(now + 0.04);
+    osc.stop(now + 0.12);
+  } catch (err) {
+    console.warn('Shutter sound failed:', err);
+  }
+}
+
+// ============ FLASH EFFECT ============
+function flashScreen() {
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:9999;opacity:0;pointer-events:none;transition:opacity .12s;';
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => {
+    flash.style.opacity = '0.85';
+    setTimeout(() => {
+      flash.style.opacity = '0';
+      setTimeout(() => flash.remove(), 200);
+    }, 60);
+  });
+}
+
 function takePhoto() {
+  // เสียงชัตเตอร์ + flash ทันทีเมื่อกดปุ่ม
+  playShutterSound();
+  flashScreen();
+  
   const canvas = document.createElement('canvas');
   const w = video.videoWidth;
   const h = video.videoHeight;
