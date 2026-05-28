@@ -449,62 +449,49 @@ function playShutterSound() {
     const now = audioCtx.currentTime;
     const sr = audioCtx.sampleRate;
     
-    // ฟังก์ชันสร้าง mechanical "clack" 1 จังหวะ (mirror slap / curtain)
-    function mechClick(startTime, duration, hpFreq, vol) {
-      const len = Math.floor(sr * duration);
-      const buf = audioCtx.createBuffer(1, len, sr);
-      const ch = buf.getChannelData(0);
-      // noise burst ที่ decay เร็วมาก (เลียนเสียงกลไกกระทบ)
-      for (let i = 0; i < len; i++) {
-        const env = Math.pow(1 - i / len, 3.5);  // decay ชันมาก = เสียง "แทัก" คม
-        ch[i] = (Math.random() * 2 - 1) * env;
-      }
-      const src = audioCtx.createBufferSource();
-      src.buffer = buf;
-      
-      // High-pass ตัดเสียงต่ำ + bandpass เน้นช่วงกลาง = เสียงโลหะกระทบ
-      const hp = audioCtx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = hpFreq;
-      
-      const bp = audioCtx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 2800;
-      bp.Q.value = 0.8;
+    // เสียงชัตเตอร์ iPhone — "ti-tick" สั้น คม สะอาด (2 click เร็ว ๆ)
+    function iClick(startTime, freq, dur, vol) {
+      // ใช้ sine + noise นิดหน่อย ให้คมแบบ digital
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, startTime + dur);
       
       const g = audioCtx.createGain();
-      g.gain.setValueAtTime(vol, startTime);
-      g.gain.exponentialRampToValueAtTime(0.0008, startTime + duration);
+      g.gain.setValueAtTime(0.0001, startTime);
+      g.gain.linearRampToValueAtTime(vol, startTime + 0.002);  // attack เร็วมาก
+      g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
       
-      src.connect(hp);
-      hp.connect(bp);
-      bp.connect(g);
+      osc.connect(g);
       g.connect(audioCtx.destination);
-      src.start(startTime);
-      src.stop(startTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + dur);
+      
+      // เติม high-freq tick ให้คม
+      const len = Math.floor(sr * 0.012);
+      const buf = audioCtx.createBuffer(1, len, sr);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buf;
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 4000;
+      const ng = audioCtx.createGain();
+      ng.gain.setValueAtTime(vol * 0.5, startTime);
+      ng.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.012);
+      noise.connect(hp);
+      hp.connect(ng);
+      ng.connect(audioCtx.destination);
+      noise.start(startTime);
+      noise.stop(startTime + 0.012);
     }
     
-    // เสียงกล้อง DSLR: "K-CHAK"
-    // 1) Mirror slap ขึ้น (จังหวะแรก คม สั้น)
-    mechClick(now, 0.035, 1500, 0.42);
-    // 2) Shutter curtain เปิด-ปิด (จังหวะสอง ต่ำกว่าเล็กน้อย ดังกว่า)
-    mechClick(now + 0.055, 0.060, 900, 0.50);
-    // 3) Mirror กลับลง (จังหวะสาม เบาๆ)
-    mechClick(now + 0.125, 0.030, 1100, 0.22);
-    
-    // เพิ่ม low thud (เสียงตัวกล้องสั่น) ให้มีน้ำหนัก
-    const thud = audioCtx.createOscillator();
-    thud.type = 'sine';
-    thud.frequency.setValueAtTime(120, now + 0.05);
-    thud.frequency.exponentialRampToValueAtTime(55, now + 0.13);
-    const thudGain = audioCtx.createGain();
-    thudGain.gain.setValueAtTime(0.0001, now + 0.05);
-    thudGain.gain.linearRampToValueAtTime(0.22, now + 0.065);
-    thudGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-    thud.connect(thudGain);
-    thudGain.connect(audioCtx.destination);
-    thud.start(now + 0.05);
-    thud.stop(now + 0.16);
+    // iPhone shutter: 2 click เร็ว ๆ ระยะห่าง 45ms
+    iClick(now, 2200, 0.035, 0.30);          // click แรก (สูง)
+    iClick(now + 0.045, 1600, 0.045, 0.34);  // click สอง (ต่ำกว่าเล็กน้อย ยาวกว่า)
   } catch (err) {
     console.warn('Shutter sound failed:', err);
   }
