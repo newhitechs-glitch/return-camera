@@ -447,45 +447,64 @@ function playShutterSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     
     const now = audioCtx.currentTime;
+    const sr = audioCtx.sampleRate;
     
-    // เสียง "click" — ใช้ noise burst + high-pass filter
-    const bufferSize = audioCtx.sampleRate * 0.08;  // 80ms
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+    // ฟังก์ชันสร้าง mechanical "clack" 1 จังหวะ (mirror slap / curtain)
+    function mechClick(startTime, duration, hpFreq, vol) {
+      const len = Math.floor(sr * duration);
+      const buf = audioCtx.createBuffer(1, len, sr);
+      const ch = buf.getChannelData(0);
+      // noise burst ที่ decay เร็วมาก (เลียนเสียงกลไกกระทบ)
+      for (let i = 0; i < len; i++) {
+        const env = Math.pow(1 - i / len, 3.5);  // decay ชันมาก = เสียง "แทัก" คม
+        ch[i] = (Math.random() * 2 - 1) * env;
+      }
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      
+      // High-pass ตัดเสียงต่ำ + bandpass เน้นช่วงกลาง = เสียงโลหะกระทบ
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = hpFreq;
+      
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 2800;
+      bp.Q.value = 0.8;
+      
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(vol, startTime);
+      g.gain.exponentialRampToValueAtTime(0.0008, startTime + duration);
+      
+      src.connect(hp);
+      hp.connect(bp);
+      bp.connect(g);
+      g.connect(audioCtx.destination);
+      src.start(startTime);
+      src.stop(startTime + duration);
     }
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
     
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.value = 1200;
+    // เสียงกล้อง DSLR: "K-CHAK"
+    // 1) Mirror slap ขึ้น (จังหวะแรก คม สั้น)
+    mechClick(now, 0.035, 1500, 0.42);
+    // 2) Shutter curtain เปิด-ปิด (จังหวะสอง ต่ำกว่าเล็กน้อย ดังกว่า)
+    mechClick(now + 0.055, 0.060, 900, 0.50);
+    // 3) Mirror กลับลง (จังหวะสาม เบาๆ)
+    mechClick(now + 0.125, 0.030, 1100, 0.22);
     
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.30, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
-    noise.start(now);
-    noise.stop(now + 0.08);
-    
-    // เสียง "klak" สั้น ๆ ตอนกลไกชัตเตอร์ปิด (low-tone)
-    const osc = audioCtx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(180, now + 0.04);
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.10);
-    
-    const oscGain = audioCtx.createGain();
-    oscGain.gain.setValueAtTime(0.18, now + 0.04);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-    
-    osc.connect(oscGain);
-    oscGain.connect(audioCtx.destination);
-    osc.start(now + 0.04);
-    osc.stop(now + 0.12);
+    // เพิ่ม low thud (เสียงตัวกล้องสั่น) ให้มีน้ำหนัก
+    const thud = audioCtx.createOscillator();
+    thud.type = 'sine';
+    thud.frequency.setValueAtTime(120, now + 0.05);
+    thud.frequency.exponentialRampToValueAtTime(55, now + 0.13);
+    const thudGain = audioCtx.createGain();
+    thudGain.gain.setValueAtTime(0.0001, now + 0.05);
+    thudGain.gain.linearRampToValueAtTime(0.22, now + 0.065);
+    thudGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+    thud.connect(thudGain);
+    thudGain.connect(audioCtx.destination);
+    thud.start(now + 0.05);
+    thud.stop(now + 0.16);
   } catch (err) {
     console.warn('Shutter sound failed:', err);
   }
