@@ -140,23 +140,58 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   display: none;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 4px;
+  padding: 8px 16px 6px;
   background: rgba(220,38,38,0.95);
-  border-radius: 99px;
+  border-radius: 14px;
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font);
   z-index: 55;
   box-shadow: 0 4px 16px rgba(220,38,38,0.50);
+  min-width: 180px;
 }
 .recording-indicator.show { display: flex; }
+.recording-indicator > span,
+.recording-indicator > .red-dot { display: inline-block; }
 .recording-indicator .red-dot {
   width: 8px; height: 8px;
   background: #fff;
   border-radius: 50%;
   animation: rec-pulse 1s ease-in-out infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.recording-indicator .rec-max {
+  font-size: 11px;
+  opacity: 0.75;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.recording-indicator .rec-progress {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.recording-indicator .rec-progress-fill {
+  height: 100%;
+  background: #fff;
+  width: 0%;
+  border-radius: 99px;
+  transition: width 0.2s linear;
+}
+.recording-indicator.warning {
+  background: rgba(234,88,12,0.95);
+  animation: rec-warn 0.5s ease-in-out infinite;
+}
+@keyframes rec-warn {
+  0%, 100% { box-shadow: 0 4px 16px rgba(234,88,12,0.50); }
+  50% { box-shadow: 0 4px 20px rgba(234,88,12,0.90); }
 }
 @keyframes rec-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -342,6 +377,8 @@ html, body {
     <div class="recording-indicator" id="recIndicator">
       <span class="red-dot"></span>
       <span id="recTimer">REC 00:00</span>
+      <span class="rec-max" id="recMaxLabel">/ 01:00</span>
+      <div class="rec-progress"><div class="rec-progress-fill" id="recProgressFill"></div></div>
     </div>
   </div>
   
@@ -402,7 +439,7 @@ let mediaRecorder = null;
 let recordChunks = [];
 let recordStartTime = 0;
 let recordTimerId = null;
-const MAX_VIDEO_SECONDS = 30;
+const MAX_VIDEO_SECONDS = 60;
 
 const video = document.getElementById('video');
 const preview = document.getElementById('preview');
@@ -566,6 +603,19 @@ function startRecording() {
     const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
     const ss = String(elapsed % 60).padStart(2, '0');
     recTimer.textContent = 'REC ' + mm + ':' + ss;
+    
+    // Update progress bar
+    const pct = Math.min((elapsed / MAX_VIDEO_SECONDS) * 100, 100);
+    const fill = document.getElementById('recProgressFill');
+    if (fill) fill.style.width = pct + '%';
+    
+    // เตือนเมื่อเหลือ ≤10 วินาที
+    if (elapsed >= MAX_VIDEO_SECONDS - 10) {
+      recIndicator.classList.add('warning');
+    } else {
+      recIndicator.classList.remove('warning');
+    }
+    
     if (elapsed >= MAX_VIDEO_SECONDS) stopRecording();
   }, 200);
 }
@@ -575,7 +625,9 @@ function stopRecording() {
     mediaRecorder.stop();
   }
   captureBtn.classList.remove('recording');
-  recIndicator.classList.remove('show');
+  recIndicator.classList.remove('show', 'warning');
+  const fill = document.getElementById('recProgressFill');
+  if (fill) fill.style.width = '0%';
   if (recordTimerId) { clearInterval(recordTimerId); recordTimerId = null; }
 }
 
